@@ -10,9 +10,8 @@ ApplicationWindow {
     color: "black"
 
     property int rectCount: Math.max(1, ui ? ui.binCount : 1)
-    property int minRectWidth: 8
+    property int minRectWidth: 2
     property int activeIndex: -1
-    property int plotPadding: 16
     property bool showDots: false
     property bool showVoronoi: true
 
@@ -37,7 +36,7 @@ ApplicationWindow {
         Row {
             id: row
             anchors.fill: parent
-            spacing: 4
+            spacing: 2
 
             property real cellWidth: Math.max(minRectWidth, (row.width - (rectCount - 1) * row.spacing) / rectCount)
 
@@ -86,7 +85,6 @@ ApplicationWindow {
 
         VoronoiEdges {
             anchors.fill: parent
-            padding: plotPadding
             edges: ui ? ui.voronoiEdges : []
             cells: ui ? ui.voronoiCells : []
             activeIndex: root.activeIndex
@@ -102,8 +100,8 @@ ApplicationWindow {
                 readonly property real xNorm: modelData.x
                 readonly property real yNorm: modelData.y
 
-                x: plotPadding + xNorm * (plotArea.width - 2 * plotPadding) - width / 2
-                y: plotPadding + (1 - yNorm) * (plotArea.height - 2 * plotPadding) - height / 2
+                x: xNorm * plotArea.width - width / 2
+                y: (1 - yNorm) * plotArea.height - height / 2
 
                 Rectangle {
                     anchors.fill: parent
@@ -121,13 +119,13 @@ ApplicationWindow {
                 if (!ui) {
                     return
                 }
-                var w = plotArea.width - 2 * plotPadding
-                var h = plotArea.height - 2 * plotPadding
+                var w = plotArea.width
+                var h = plotArea.height
                 if (w <= 0 || h <= 0) {
                     return
                 }
-                var nx = (xPos - plotPadding) / w
-                var ny = 1 - (yPos - plotPadding) / h
+                var nx = xPos / w
+                var ny = 1 - (yPos / h)
                 var bestIndex = ui.cellIndexAt(nx, ny)
                 if (bestIndex >= 0 && activeIndex !== bestIndex) {
                     activeIndex = bestIndex

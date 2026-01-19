@@ -83,6 +83,7 @@ set(CORE_SOURCES
     src/analysis.cpp
     src/audio.cpp
     src/dsp.cpp
+    src/effects.cpp
 )
 
 set(UI_SOURCES

@@ -8,6 +8,7 @@
 
 #include "miniaudio.h"
 #include "analysis.hpp"
+#include "effects.hpp"
 
 class AudioCore {
   AnalysisCore &analysisCore;
@@ -29,6 +30,9 @@ class AudioCore {
   float binGain{1.0f};
   float nextBinGain{1.0f};
   float maxOutputAmplitude{0.8f};
+  // Output buffer for the audio callback after passing through effect pipeline
+  std::vector<float> outputBuffer;
+  EffectPipeline effectPipeline;
 
   static void dataCallback(ma_device *pDevice, void *pOutput,
                            const void * /*pInput*/, ma_uint32 frameCount);

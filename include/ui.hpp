@@ -55,7 +55,6 @@ class VoronoiEdgesItem : public QQuickItem {
   Q_PROPERTY(QVariantList cells READ cells WRITE setCells NOTIFY cellsChanged)
   Q_PROPERTY(int activeIndex READ activeIndex WRITE setActiveIndex NOTIFY
                  activeIndexChanged)
-  Q_PROPERTY(int padding READ padding WRITE setPadding NOTIFY paddingChanged)
 
 public:
   explicit VoronoiEdgesItem(QQuickItem *parent = nullptr);
@@ -69,14 +68,11 @@ public:
   int activeIndex() const;
   void setActiveIndex(int index);
 
-  int padding() const;
-  void setPadding(int padding);
 
 signals:
   void edgesChanged();
   void cellsChanged();
   void activeIndexChanged();
-  void paddingChanged();
 
 protected:
   QSGNode *updatePaintNode(QSGNode *oldNode,
@@ -106,7 +102,6 @@ private:
   std::vector<Edge> edgeCache;
   std::vector<Cell> cellCache;
   int active{ -1 };
-  int paddingPx{ 16 };
   bool geometryDirty{ true };
   bool colorDirty{ true };
 };

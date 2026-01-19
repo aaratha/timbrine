@@ -12,7 +12,7 @@ AudioCore::AudioCore(AnalysisCore &analysisCore) : analysisCore(analysisCore) {
 
   deviceConfig = ma_device_config_init(ma_device_type_playback);
   deviceConfig.playback.format = DEVICE_FORMAT;
-  deviceConfig.playback.channels = DEVICE_CHANNELS;
+  deviceConfig.playback.channels = OUTPUT_CHANNELS;
   deviceConfig.sampleRate = static_cast<ma_uint32>(DEVICE_SAMPLE_RATE);
   deviceConfig.dataCallback = AudioCore::dataCallback;
   deviceConfig.pUserData = this;
@@ -94,11 +94,15 @@ void AudioCore::processAudio(float *out, ma_uint32 frameCount) {
   size_t binCount = analysisCore.getBinCount();
   if (binCount == 0) {
     for (ma_uint32 frame = 0; frame < frameCount; ++frame) {
-      for (ma_uint32 ch = 0; ch < DEVICE_CHANNELS; ++ch) {
+      for (ma_uint32 ch = 0; ch < OUTPUT_CHANNELS; ++ch) {
         *out++ = 0.0f;
       }
     }
     return;
+  }
+
+  if (outputBuffer.size() != frameCount) {
+    outputBuffer.assign(frameCount, 0.0f);
   }
 
   size_t currentBinIndex = binIndex.load();
@@ -116,7 +120,7 @@ void AudioCore::processAudio(float *out, ma_uint32 frameCount) {
 
   if (binBuffer.empty()) {
     for (ma_uint32 frame = 0; frame < frameCount; ++frame) {
-      for (ma_uint32 ch = 0; ch < DEVICE_CHANNELS; ++ch) {
+      for (ma_uint32 ch = 0; ch < OUTPUT_CHANNELS; ++ch) {
         *out++ = 0.0f;
       }
     }
@@ -161,7 +165,13 @@ void AudioCore::processAudio(float *out, ma_uint32 frameCount) {
       }
     }
 
-    for (ma_uint32 ch = 0; ch < DEVICE_CHANNELS; ++ch) {
+    outputBuffer[frame] = sample;
+  }
+
+  effectPipeline.processBuffer(outputBuffer);
+  for (ma_uint32 frame = 0; frame < frameCount; ++frame) {
+    float sample = outputBuffer[frame];
+    for (ma_uint32 ch = 0; ch < OUTPUT_CHANNELS; ++ch) {
       *out++ = sample;
     }
   }

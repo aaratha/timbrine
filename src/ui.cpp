@@ -187,18 +187,6 @@ void VoronoiEdgesItem::setActiveIndex(int index) {
   emit activeIndexChanged();
 }
 
-int VoronoiEdgesItem::padding() const { return paddingPx; }
-
-void VoronoiEdgesItem::setPadding(int padding) {
-  if (paddingPx == padding) {
-    return;
-  }
-  paddingPx = padding;
-  geometryDirty = true;
-  update();
-  emit paddingChanged();
-}
-
 void VoronoiEdgesItem::rebuildEdgeCache() {
   edgeCache.clear();
   edgeCache.reserve(static_cast<size_t>(edgeList.size()));
@@ -277,8 +265,8 @@ QSGNode *VoronoiEdgesItem::updatePaintNode(
   }
 
   if (geometryDirty || colorDirty) {
-    const float paddedWidth = std::max(0.0, width() - 2.0 * paddingPx);
-    const float paddedHeight = std::max(0.0, height() - 2.0 * paddingPx);
+    const float paddedWidth = std::max(0.0, width());
+    const float paddedHeight = std::max(0.0, height());
 
     auto *lineVertices = lineGeometry->vertexDataAsColoredPoint2D();
     const QColor lineColor("#8a97a6");
@@ -286,10 +274,10 @@ QSGNode *VoronoiEdgesItem::updatePaintNode(
 
     int v = 0;
     for (const auto &edge : edgeCache) {
-      const float x1 = paddingPx + edge.x1 * paddedWidth;
-      const float y1 = paddingPx + (1.0f - edge.y1) * paddedHeight;
-      const float x2 = paddingPx + edge.x2 * paddedWidth;
-      const float y2 = paddingPx + (1.0f - edge.y2) * paddedHeight;
+      const float x1 = edge.x1 * paddedWidth;
+      const float y1 = (1.0f - edge.y1) * paddedHeight;
+      const float x2 = edge.x2 * paddedWidth;
+      const float y2 = (1.0f - edge.y2) * paddedHeight;
 
       lineVertices[v++].set(x1, y1, lineColor.red(), lineColor.green(),
                             lineColor.blue(), lineAlpha);
@@ -321,8 +309,8 @@ QSGNode *VoronoiEdgesItem::updatePaintNode(
   }
 
   if (fillVertexCount > 0) {
-    const float paddedWidth = std::max(0.0, width() - 2.0 * paddingPx);
-    const float paddedHeight = std::max(0.0, height() - 2.0 * paddingPx);
+    const float paddedWidth = std::max(0.0, width());
+    const float paddedHeight = std::max(0.0, height());
     auto *fillVertices = fillGeometry->vertexDataAsColoredPoint2D();
     const QColor fillColor("#f39c12");
     const unsigned char fillAlpha = 80;
@@ -341,12 +329,12 @@ QSGNode *VoronoiEdgesItem::updatePaintNode(
       const QPointF &p1 = points[i];
       const QPointF &p2 = points[i + 1];
 
-      const float x0 = paddingPx + origin.x() * paddedWidth;
-      const float y0 = paddingPx + (1.0f - origin.y()) * paddedHeight;
-      const float x1 = paddingPx + p1.x() * paddedWidth;
-      const float y1 = paddingPx + (1.0f - p1.y()) * paddedHeight;
-      const float x2 = paddingPx + p2.x() * paddedWidth;
-      const float y2 = paddingPx + (1.0f - p2.y()) * paddedHeight;
+      const float x0 = origin.x() * paddedWidth;
+      const float y0 = (1.0f - origin.y()) * paddedHeight;
+      const float x1 = p1.x() * paddedWidth;
+      const float y1 = (1.0f - p1.y()) * paddedHeight;
+      const float x2 = p2.x() * paddedWidth;
+      const float y2 = (1.0f - p2.y()) * paddedHeight;
 
       fillVertices[fv++].set(x0, y0, fillR, fillG, fillB, fillAlpha);
       fillVertices[fv++].set(x1, y1, fillR, fillG, fillB, fillAlpha);
