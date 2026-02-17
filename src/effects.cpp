@@ -289,14 +289,14 @@ EffectPipeline::EffectPipeline() {
   auto *delay =
       new DelayEffect(1.0f, 0.3f, static_cast<int>(DEVICE_SAMPLE_RATE));
   delay->setFeedback(0.2f);
-  delay->setMix(0.5f);
+  delay->setMix(0.0f);
   effects.push_back(delay);
 
   auto *reverb = new ReverbEffect(static_cast<float>(DEVICE_SAMPLE_RATE));
   reverb->setRoomSize(1.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setDamping(3000.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setDecayTime(2.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setWet(0.9f);
+  reverb->setDamping(4000.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setDecayTime(0.5f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setWet(0.3f);
   effects.push_back(reverb);
 }
 
