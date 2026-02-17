@@ -21,5 +21,6 @@ static constexpr float ALLPASS_DELAYS[4] = {
 };
 
 static constexpr float ALLPASS_FEEDBACK = 0.5f;
-static constexpr float COMB_FEEDBACK     = 0.84f;
+static constexpr float DEFAULT_RT60 = 1.5f;  // seconds
 static constexpr float DEFAULT_DAMPING   = 5000.0f;
+

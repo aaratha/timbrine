@@ -218,18 +218,22 @@ ReverbEffect::ReverbEffect(float sampleRate)
                AllpassFilter(0.1f, sampleRate)}) {
   for (int i = 0; i < NUM_COMBS; ++i) {
     combs[i].setDelayTime(COMB_DELAYS[i], sampleRate);
-    combs[i].setFeedback(COMB_FEEDBACK);
+    float delaySamples = COMB_DELAYS[i] * roomSize * sampleRate;
+    float fb = powf(0.001f, delaySamples / (DEFAULT_RT60 * sampleRate));
+    combs[i].setFeedback(fb);
     combs[i].setDampingCutoff(DEFAULT_DAMPING, sampleRate);
   }
   for (int i = 0; i < NUM_ALLPASS; ++i) {
     allpass[i].setDelayTime(ALLPASS_DELAYS[i], sampleRate);
     allpass[i].setFeedback(ALLPASS_FEEDBACK);
+
   }
 }
 
-void ReverbEffect::setRoomSize(float scale, float sampleRate) {
+void ReverbEffect::setRoomSize(float size, float sampleRate) {
   // scale 0.0-1.0 maps to a multiplier on the base delay times
-  float s = std::clamp(scale, 0.1f, 2.0f);
+  float s = std::clamp(size, 0.1f, 2.0f);
+  roomSize = s;
   for (int i = 0; i < NUM_COMBS; ++i)
     combs[i].setDelayTime(COMB_DELAYS[i] * s, sampleRate);
 }
@@ -237,6 +241,14 @@ void ReverbEffect::setRoomSize(float scale, float sampleRate) {
 void ReverbEffect::setDamping(float cutoffHz, float sampleRate) {
   for (int i = 0; i < NUM_COMBS; ++i)
     combs[i].setDampingCutoff(cutoffHz, sampleRate);
+}
+
+void ReverbEffect::setDecayTime(float rt60, float sampleRate) {
+    for (int i = 0; i < NUM_COMBS; ++i) {
+        float delaySamples = COMB_DELAYS[i] * roomSize * sampleRate;
+        float fb = powf(0.001f, delaySamples / (rt60 * sampleRate));
+        combs[i].setFeedback(fb);
+    }
 }
 
 void ReverbEffect::setWet(float wet) {
@@ -275,14 +287,15 @@ void ReverbEffect::process(std::vector<float> &input) {
 // ============================================
 EffectPipeline::EffectPipeline() {
   auto *delay =
-      new DelayEffect(1.0f, 0.25f, static_cast<int>(DEVICE_SAMPLE_RATE));
+      new DelayEffect(1.0f, 0.3f, static_cast<int>(DEVICE_SAMPLE_RATE));
   delay->setFeedback(0.2f);
   delay->setMix(0.5f);
   effects.push_back(delay);
 
   auto *reverb = new ReverbEffect(static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setRoomSize(1.5f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setRoomSize(1.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
   reverb->setDamping(3000.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setDecayTime(2.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
   reverb->setWet(0.9f);
   effects.push_back(reverb);
 }

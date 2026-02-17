@@ -93,12 +93,14 @@ struct ReverbEffect : public AudioEffect {
 
   float wetMix = 0.3f;
   float dryMix = 0.7f;
+  float roomSize = 1.0f;
 
   ReverbEffect(float sampleRate);
 
-  void setRoomSize(float seconds, float sampleRate); // scales delay times
+  void setRoomSize(float size, float sampleRate); // scales delay times
   void setDamping(float cutoffHz,
                   float sampleRate); // lowpass cutoff in feedback
+  void setDecayTime(float rt60, float sampleRate); // sets feedback for a given RT60
   void setWet(float wet);            // 0.0 - 1.0
   void process(std::vector<float> &input) override;
 };
