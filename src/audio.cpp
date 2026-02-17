@@ -4,6 +4,7 @@
 #include "audio.hpp"
 #include "globals.hpp"
 
+#include <algorithm>
 #include <iostream>
 
 AudioCore::AudioCore(AnalysisCore &analysisCore) : analysisCore(analysisCore) {
@@ -28,6 +29,9 @@ AudioCore::AudioCore(AnalysisCore &analysisCore) : analysisCore(analysisCore) {
     return;
   }
 
+  minSwitchIntervalSamples =
+      static_cast<size_t>(DEVICE_SAMPLE_RATE / 15.0f); // 15 switches/sec
+  samplesSinceSwitch = minSwitchIntervalSamples;
   audioInitialized = true;
   running.store(true);
 }
@@ -43,7 +47,7 @@ AudioCore::~AudioCore() {
 void AudioCore::setBinIndex(size_t index) {
   size_t binCount = analysisCore.getBinCount();
   if (binCount == 0) {
-    binIndex.store(0);
+    targetBinIndex.store(0);
     return;
   }
 
@@ -51,7 +55,7 @@ void AudioCore::setBinIndex(size_t index) {
     index = binCount - 1;
   }
 
-  binIndex.store(index);
+  targetBinIndex.store(index);
 }
 
 void AudioCore::dataCallback(ma_device *pDevice, void *pOutput,
@@ -105,17 +109,38 @@ void AudioCore::processAudio(float *out, ma_uint32 frameCount) {
     outputBuffer.assign(frameCount, 0.0f);
   }
 
-  size_t currentBinIndex = binIndex.load();
-  if (currentBinIndex >= binCount) {
-    currentBinIndex = 0;
+  samplesSinceSwitch += frameCount;
+
+  size_t desiredBinIndex = targetBinIndex.load();
+  if (desiredBinIndex >= binCount) {
+    desiredBinIndex = 0;
   }
 
-  if (currentBinIndex != lastSynthBinIndex || binBuffer.empty()) {
-    prepareBinBuffer(currentBinIndex, binBuffer, binGain);
+  if (binBuffer.empty()) {
+    prepareBinBuffer(desiredBinIndex, binBuffer, binGain);
     binPlayhead = 0;
     overlapSize = binBuffer.size() / 2;
     nextBufferReady = false;
-    lastSynthBinIndex = currentBinIndex;
+    currentBinIndex = desiredBinIndex;
+  }
+
+  if (currentBinIndex != desiredBinIndex && !switching &&
+      samplesSinceSwitch >= minSwitchIntervalSamples) {
+    prepareBinBuffer(desiredBinIndex, switchBuffer, switchGain);
+    if (!switchBuffer.empty() && !binBuffer.empty()) {
+      const size_t maxSwitch = std::min(binBuffer.size(), switchBuffer.size());
+      const size_t defaultSwitch =
+          static_cast<size_t>(DEVICE_SAMPLE_RATE * 0.02f);
+      switchLength = std::max<size_t>(1, std::min(maxSwitch, defaultSwitch));
+      switchPos = 0;
+      switchPlayhead = 0;
+      switchTargetIndex = desiredBinIndex;
+      switching = true;
+      samplesSinceSwitch = 0;
+    } else {
+      currentBinIndex = desiredBinIndex;
+      switching = false;
+    }
   }
 
   if (binBuffer.empty()) {
@@ -145,6 +170,36 @@ void AudioCore::processAudio(float *out, ma_uint32 frameCount) {
                (nextBinBuffer[x] * nextBinGain * fadeIn);
     } else {
       sample = binBuffer[binPlayhead] * binGain;
+    }
+
+    if (switching && switchLength > 0) {
+      const float t = static_cast<float>(switchPos) /
+                      static_cast<float>(switchLength);
+      const float fadeOut = 0.5f * (1.0f + cosf(M_PI * t));
+      const float fadeIn = 1.0f - fadeOut;
+      float switchSample = 0.0f;
+      if (switchPlayhead < switchBuffer.size()) {
+        switchSample = switchBuffer[switchPlayhead] * switchGain;
+      }
+      sample = (sample * fadeOut) + (switchSample * fadeIn);
+      ++switchPos;
+      ++switchPlayhead;
+      if (switchPos >= switchLength) {
+        binBuffer.swap(switchBuffer);
+        binGain = switchGain;
+        if (binBuffer.empty()) {
+          binPlayhead = 0;
+        } else if (switchPlayhead == 0) {
+          binPlayhead = binBuffer.size() - 1;
+        } else {
+          binPlayhead = switchPlayhead - 1;
+        }
+        overlapSize = binBuffer.size() / 2;
+        nextBufferReady = false;
+        currentBinIndex = switchTargetIndex;
+        switching = false;
+        samplesSinceSwitch = 0;
+      }
     }
 
     if (sample > maxOutputAmplitude) {
