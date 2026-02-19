@@ -74,13 +74,34 @@ struct AllpassFilter : public AudioEffect {
 };
 
 struct BiquadFilter : public AudioEffect {
-  float a0 = 1.0f, a1 = 0.0f, a2 = 0.0f;
-  float b1 = 0.0f, b2 = 0.0f;
-  float z1 = 0.0f, z2 = 0.0f;
+  FilterType type;
 
-  void setLowpass(float cutoffFreq, float Q, float sampleRate);
-  void setHighpass(float cutoffFreq, float Q, float sampleRate);
-  void setBandpass(float cutoffFreq, float Q, float sampleRate);
+  // Feedforward coefficients
+  float a0 = 1.0f;
+  float a1 = 0.0f;
+  float a2 = 0.0f;
+
+  // Feedback coefficients
+  float b1 = 0.0f;
+  float b2 = 0.0f;
+
+  // State variables
+  float z1_x = 0.0f; // x[n-1]
+  float z2_x = 0.0f; // x[n-2]
+  float z1_y = 0.0f; // y[n-1]
+  float z2_y = 0.0f; // y[n-2]
+
+  bool initialized = false;
+
+  BiquadFilter(FilterType type);
+
+  // cutoffFreq in Hz, sampleRate in Hz
+  // Q controls resonance/bandwidth — 0.707 is Butterworth (no resonance)
+  // gainDb only used for peak and shelf types
+  void setCoefficients(float cutoffFreq, float sampleRate, float Q = 0.707f,
+                       float gainDb = 0.0f);
+
+  float processSample(float in);
   void process(std::vector<float> &input) override;
 };
 
@@ -100,8 +121,9 @@ struct ReverbEffect : public AudioEffect {
   void setRoomSize(float size, float sampleRate); // scales delay times
   void setDamping(float cutoffHz,
                   float sampleRate); // lowpass cutoff in feedback
-  void setDecayTime(float rt60, float sampleRate); // sets feedback for a given RT60
-  void setWet(float wet);            // 0.0 - 1.0
+  void setDecayTime(float rt60,
+                    float sampleRate); // sets feedback for a given RT60
+  void setWet(float wet);              // 0.0 - 1.0
   void process(std::vector<float> &input) override;
 };
 

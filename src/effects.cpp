@@ -205,6 +205,82 @@ void AllpassFilter::process(std::vector<float> &input) {
 }
 
 // ============================================
+// ------------Biquad Filter Effect------------
+// ============================================
+BiquadFilter::BiquadFilter(FilterType type) : type(type) {}
+
+void BiquadFilter::setCoefficients(float cutoffFreq, float sampleRate, float Q,
+                                   float gainDb) {
+  initialized = true;
+
+  float w0 = 2.0f * M_PI * cutoffFreq / sampleRate;
+  float cosW0 = cosf(w0);
+  float sinW0 = sinf(w0);
+  float alpha = sinW0 / (2.0f * Q);
+  float A = powf(10.0f, gainDb / 40.0f); // linear amplitude for gain types
+
+  float b0, b1_raw, b2_raw, a0_raw, a1_raw, a2_raw;
+
+  switch (type) {
+  case FilterType::Lowpass:
+    b0 = (1.0f - cosW0) / 2.0f;
+    b1_raw = 1.0f - cosW0;
+    b2_raw = (1.0f - cosW0) / 2.0f;
+    a0_raw = 1.0f + alpha;
+    a1_raw = -2.0f * cosW0;
+    a2_raw = 1.0f - alpha;
+    break;
+
+  case FilterType::Highpass:
+    b0 = (1.0f + cosW0) / 2.0f;
+    b1_raw = -(1.0f + cosW0);
+    b2_raw = (1.0f + cosW0) / 2.0f;
+    a0_raw = 1.0f + alpha;
+    a1_raw = -2.0f * cosW0;
+    a2_raw = 1.0f - alpha;
+    break;
+
+  case FilterType::Bandpass:
+    b0 = sinW0 / 2.0f;
+    b1_raw = 0.0f;
+    b2_raw = -sinW0 / 2.0f;
+    a0_raw = 1.0f + alpha;
+    a1_raw = -2.0f * cosW0;
+    a2_raw = 1.0f - alpha;
+    break;
+
+  default:
+    std::cerr << "BiquadFilter: unsupported filter type\n";
+    return;
+  }
+
+  // Normalize all coefficients by a0_raw
+  a0 = b0 / a0_raw;
+  a1 = b1_raw / a0_raw;
+  a2 = b2_raw / a0_raw;
+  b1 = a1_raw / a0_raw;
+  b2 = a2_raw / a0_raw;
+}
+
+float BiquadFilter::processSample(float in) {
+  assert(initialized &&
+         "BiquadFilter::setCoefficients must be called before processing");
+  float out = a0 * in + a1 * z1_x + a2 * z2_x - b1 * z1_y - b2 * z2_y;
+  z2_x = z1_x;
+  z1_x = in;
+  z2_y = z1_y;
+  z1_y = out;
+  return out;
+}
+
+void BiquadFilter::process(std::vector<float> &input) {
+  assert(initialized &&
+         "BiquadFilter::setCoefficients must be called before processing");
+  for (size_t n = 0; n < input.size(); ++n)
+    input[n] = processSample(input[n]);
+}
+
+// ============================================
 // --------------Reverb Effect-----------------
 // ============================================
 
@@ -226,7 +302,6 @@ ReverbEffect::ReverbEffect(float sampleRate)
   for (int i = 0; i < NUM_ALLPASS; ++i) {
     allpass[i].setDelayTime(ALLPASS_DELAYS[i], sampleRate);
     allpass[i].setFeedback(ALLPASS_FEEDBACK);
-
   }
 }
 
@@ -244,11 +319,11 @@ void ReverbEffect::setDamping(float cutoffHz, float sampleRate) {
 }
 
 void ReverbEffect::setDecayTime(float rt60, float sampleRate) {
-    for (int i = 0; i < NUM_COMBS; ++i) {
-        float delaySamples = COMB_DELAYS[i] * roomSize * sampleRate;
-        float fb = powf(0.001f, delaySamples / (rt60 * sampleRate));
-        combs[i].setFeedback(fb);
-    }
+  for (int i = 0; i < NUM_COMBS; ++i) {
+    float delaySamples = COMB_DELAYS[i] * roomSize * sampleRate;
+    float fb = powf(0.001f, delaySamples / (rt60 * sampleRate));
+    combs[i].setFeedback(fb);
+  }
 }
 
 void ReverbEffect::setWet(float wet) {
@@ -286,17 +361,21 @@ void ReverbEffect::process(std::vector<float> &input) {
 // --------------Effect Pipeline---------------
 // ============================================
 EffectPipeline::EffectPipeline() {
-  auto *delay =
-      new DelayEffect(1.0f, 0.3f, static_cast<int>(DEVICE_SAMPLE_RATE));
-  delay->setFeedback(0.2f);
-  delay->setMix(0.0f);
-  effects.push_back(delay);
+  // auto *delay =
+  //     new DelayEffect(1.0f, 0.3f, static_cast<int>(DEVICE_SAMPLE_RATE));
+  // delay->setFeedback(0.3f);
+  // delay->setMix(0.5f);
+  // effects.push_back(delay);
+
+  // auto *lowpass = new BiquadFilter(FilterType::Lowpass);
+  // lowpass->setCoefficients(1000.0f, static_cast<float>(DEVICE_SAMPLE_RATE), 0.707f);
+  // effects.push_back(lowpass);
 
   auto *reverb = new ReverbEffect(static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setRoomSize(1.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setDamping(4000.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setDecayTime(0.5f, static_cast<float>(DEVICE_SAMPLE_RATE));
-  reverb->setWet(0.3f);
+  reverb->setRoomSize(2.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setDamping(3000.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setDecayTime(4.0f, static_cast<float>(DEVICE_SAMPLE_RATE));
+  reverb->setWet(0.0f);
   effects.push_back(reverb);
 }
 
