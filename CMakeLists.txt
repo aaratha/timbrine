@@ -25,6 +25,10 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(miniaudio_src)
 
+if(APPLE)
+    target_compile_options(miniaudio PRIVATE -fblocks)
+endif()
+
 # ----------------------
 # pffft
 # ----------------------
@@ -34,15 +38,16 @@ FetchContent_Declare(
     GIT_TAG master
 )
 
-FetchContent_Populate(pffft_src)
+FetchContent_MakeAvailable(pffft_src)
 
 add_library(pffft STATIC
-    ${pffft_src_SOURCE_DIR}/pffft.c
-    ${pffft_src_SOURCE_DIR}/pffft_common.c
+    ${pffft_src_SOURCE_DIR}/src/pffft.c
+    ${pffft_src_SOURCE_DIR}/src/pffft_common.c
 )
 
+
 target_include_directories(pffft PUBLIC
-    ${pffft_src_SOURCE_DIR}
+    ${pffft_src_SOURCE_DIR}/include/pffft
 )
 
 target_compile_definitions(pffft PRIVATE PFFFT_ENABLE_FLOAT)
@@ -67,7 +72,7 @@ FetchContent_Declare(
     GIT_TAG master
 )
 
-FetchContent_Populate(jc_voronoi_src)
+FetchContent_MakeAvailable(jc_voronoi_src)
 
 # ------------------------------------------------------------
 # Qt

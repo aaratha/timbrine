@@ -12,7 +12,7 @@ The project extends this idea by introducing physics-based interaction: sound fr
 
 - [x] FFT/STFT-based spectral analysis and resynthesis
 - [x] MFCC and spectral feature extraction (centroid, flux, roll-off)
-- [ ] 2D timbre embedding using dimensionality reduction
+- [x] 2D timbre embedding using dimensionality reduction
 - [ ] Physics-based interaction and field-driven playback
 - [x] Real-time audio playback and visualization
 
