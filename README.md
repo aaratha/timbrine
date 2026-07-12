@@ -1,4 +1,4 @@
-# Timbre
+# Timbrine
 
 A physics-driven timbre exploration tool that resynthesizes audio fragments and maps them into an interactive 2D timbre space.
 
